@@ -14,15 +14,12 @@ import { LANG_LABEL, type CodeLang } from '../../lib/types';
 import { runCode, usePythonStatus, warmPython } from '../../lib/runner';
 import { pythonProgram } from '../../lib/harness/python';
 import { toast } from '../../lib/toast';
-import { useLearnLang } from '../../lib/store';
+import { getDoc, useLearnLang } from '../../lib/store';
 
 const draftKey = (id: string, lang: CodeLang) => `sw-code:${id}:${lang}`;
+/** Drafts are stored per user (synced to the account when signed in). */
 function loadDraft(p: Problem, lang: CodeLang) {
-  try {
-    return localStorage.getItem(draftKey(p.id, lang)) ?? starterCode(lang, p.sig);
-  } catch {
-    return starterCode(lang, p.sig);
-  }
+  return getDoc<string>('draft', `${p.id}:${lang}`, draftKey(p.id, lang)) ?? starterCode(lang, p.sig);
 }
 
 function Statement({ p }: { p: Problem }) {
@@ -403,12 +400,9 @@ function ProblemWorkspace({ source, p }: { source: 'practice' | 'lc150'; p: Prob
   useEffect(() => {
     if (!p) return;
     const t = setTimeout(() => {
-      try {
-        if (code === starterCode(lang, p.sig)) localStorage.removeItem(draftKey(p.id, lang));
-        else localStorage.setItem(draftKey(p.id, lang), code);
-      } catch {
-        /* ignore */
-      }
+      const k = `${p.id}:${lang}`;
+      if (code === starterCode(lang, p.sig)) actions.removeDoc('draft', k);
+      else if (getDoc<string>('draft', k) !== code) actions.setDoc('draft', k, code);
     }, 400);
     return () => clearTimeout(t);
   }, [code, lang, p]);

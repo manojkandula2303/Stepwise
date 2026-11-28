@@ -721,3 +721,18 @@
     grid-template-columns: 90px 1fr 40px;
   }
 }
+
+/* ================= Account & storage ================= */
+.acct-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+.acct-card-head { display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-3); }
+.acct-card-head > svg { color: var(--text-3); margin-top: 3px; flex-shrink: 0; }
+.acct-card-head h2 { font-size: var(--text-md); font-weight: 600; margin: 0 0 2px; }
+.acct-table { margin-top: var(--space-3); border-top: 1px solid var(--border); }
+.acct-row { display: flex; align-items: center; gap: var(--space-3); padding: 9px 0; border-bottom: 1px solid var(--border); font-size: var(--text-sm); min-height: 42px; }
+.acct-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; color: var(--text-2); }

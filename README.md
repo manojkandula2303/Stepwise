@@ -18,6 +18,37 @@ npm run build
 npm start          # http://localhost:8787 (override with PORT or API_PORT)
 ```
 
+Locally, data is stored in SQLite (`data/stepwise.db`). Set `DATABASE_URL` to a PostgreSQL connection string to use Postgres instead; the schema is created automatically.
+
+## Deploying to Render
+
+On Render, a web service's disk is wiped on every deploy and restart, so the deployed app keeps all accounts in **PostgreSQL**. Every user can then sign in on any device and see the same work.
+
+**One-click (Blueprint).** The repository includes `render.yaml`, which creates the web service (Docker, with Node 22 and JDK 17 for Java) and a Postgres database, and connects them through `DATABASE_URL`.
+
+1. Push this project to GitHub (or GitLab).
+2. In Render: **New → Blueprint**, pick the repository, then **Apply**.
+3. Wait for the first deploy, then open the `stepwise` service URL. `/api/health` should return `{"ok":true}`.
+
+**Manual setup** (equivalent):
+
+1. **New → PostgreSQL** and create a database.
+2. **New → Web Service** from the repository, runtime **Docker** (the `Dockerfile` is detected), health check path `/api/health`.
+3. Add the environment variable `DATABASE_URL` = the database's **Internal Database URL**.
+
+**Bring your local accounts and work along (optional).** Copy the database's **External Database URL** from Render, then on your computer run:
+
+```powershell
+$env:DATABASE_URL = "<External Database URL>"; npm run db:migrate
+```
+
+This copies every account, password, progress record, snippet, draft and test from `data/stepwise.db`. It's safe to run more than once: existing rows are kept.
+
+**Good to know**
+- **Free plans:** a free Render web service sleeps after a period without traffic, and the first request then takes a little while to wake it. Render's free Postgres databases expire after a limited period. For long-term use, upgrade the database, or point `DATABASE_URL` at another Postgres host (for example Neon or Supabase). SSL is enabled automatically for external hosts.
+- **Code execution on Render:** Python runs in the browser and Java runs in the server's sandboxed JVM. C and C++ need Docker-in-Docker, which Render doesn't offer; set `JUDGE0_URL` to a Judge0 instance to enable them.
+- **Environment variables:** `DATABASE_URL`, `USER_QUOTA_MB` (default 25), `RUN_RATE_LIMIT` (runs per minute, default 90), `PGSSL` (`require` / `disable` to override SSL detection), `PG_POOL_MAX` (default 10).
+
 ## What's inside
 
 | Area | Contents |
@@ -25,18 +56,23 @@ npm start          # http://localhost:8787 (override with PORT or API_PORT)
 | Learn | 98 lessons across Python, Java and DSA (58 in DSA) (Subject → Module → Lesson → Sections). Each lesson has a Python/Java toggle, runnable examples, expected output, "Python vs Java" callouts, diagrams, dry runs, complexity and quizzes. |
 | Practice | 228 judged problems grouped by topic, linked from the lessons. |
 | LeetCode 150 | The interview set, with progress, filters, hints, brute-force and optimal approaches, and Python/Java reference solutions. |
-| Compiler | Python, Java, C++ and C with stdin, multiple inputs, starter templates and saved snippets. |
+| Compiler | Python, Java, C++ and C with stdin, multiple inputs, starter templates and saved snippets. Every program shows its **time and space complexity**, estimated by a static analyser (loops and nesting, halving/doubling, √n, amortised two-pointer and sliding-window loops, BFS/DFS, recursion patterns, memoisation, library calls, allocations and recursion depth), with line-by-line reasons and a confidence level. |
+| Infosys Coding | A dedicated section for the Infosys coding assessment with four levels: **Easy, Medium, Hard, Complex**. Each level lists the topics you need (linked to the lessons), explains the pattern behind every problem, and has Infosys-style sample questions (stdin/stdout, one value per line). **Generate test** builds a timed test of 4 questions of that level, each judged on **2 public + 12 hidden test cases** (edge, random and maximum-size). 38 problems, each with a test-case generator, a reference solver and verified Python/Java solutions. |
 | Visualizer | Line-by-line execution of Python and Java programs: call stack, variables, heap objects, array index pointers, linked lists, trees and narration for each step. |
 | Placement Prep | Two separate spaces, each with concepts, worked examples, practice questions and timed tests. **Aptitude & Reasoning** (152 topics): Quantitative Aptitude, Logical Reasoning, Verbal Ability, Data Interpretation, Communication Skills (read-aloud, sentence repetition and listening practice using browser speech) and Psychometric (Big Five and work-preference self-assessments plus situational judgement). **Technical MCQs** (64 topics): DBMS, OS, Computer Networks, OOP, Software Engineering and Computer Architecture. 2,136 questions in total. |
 | Timed tests | A highlighted lesson test on every topic, plus module tests, sectional tests (−0.25 negative marking), a full mock per space and a custom test builder. Exam-style runner with timer, question palette, mark-for-review, keyboard shortcuts, resume after reload and auto-submit. Results include score, accuracy, a per-topic breakdown and an answer review with explanations. |
 | Dashboard | Progress per subject and prep space, LeetCode 150 completion, recent tests, activity heatmap, streaks, achievements and saved items. |
 
-Progress is stored in the browser for guests and in SQLite for signed-in users. Guest progress is merged into the account on sign-in.
+## Accounts, storage and offline use
+
+- **A separate storage space per account.** Every table in the database (PostgreSQL in production, SQLite locally) is keyed by user id, so signing in on any device loads the same account: progress, submissions, snippets, drafts, editor buffers, self-assessments, prep attempts and Infosys tests. Accounts can't see each other's data. Each account has a quota (`USER_QUOTA_MB`, default 25). The **Account & storage** page shows usage by category, exports everything as JSON and deletes the account and all its data.
+- **Guests** keep progress in the browser; it is merged into the account on sign-up or sign-in.
+- **Offline.** The production build registers a service worker that precaches the whole app: every lesson, problem, prep topic and Infosys problem. The Python runtime (Pyodide) is cached after first use, or on demand with *Prepare for offline*. Signed-in users get a per-account cache on the device, and changes made offline go into a queue that syncs automatically when the server is reachable again. Java, C and C++ need the server. The app can be installed from the browser (Install app / Add to Home Screen).
 
 ## Architecture
 
 ```
-server/            Express API + SQLite (node:sqlite), scrypt passwords, httpOnly session cookies
+server/            Express API + PostgreSQL (DATABASE_URL) or SQLite (local), scrypt passwords, httpOnly session cookies
   runner/          Isolated code execution drivers
   java/Tracer.java JDI-based step tracer for Java
 src/
@@ -76,5 +112,5 @@ C and C++ need Docker or Judge0. Without either, the compiler explains that they
 
 ## Verification
 
-Every problem's reference solution passes its own test suite in both Python and Java. Every lesson example's printed output matches the expected output shown in the lesson (339 checks across 98 lessons). All 216 placement-prep topics and 2,136 questions pass the structural check, and every numeric answer was worked through when it was written.
+Every problem's reference solution passes its own test suite in both Python and Java. Every lesson example's printed output matches the expected output shown in the lesson (339 checks across 98 lessons). `node scripts/verify-infosys.mjs` checks that the reference solver, the Python solution and the Java solution of every Infosys problem agree on generated test cases (3,192 runs across 3 seeds per problem). All 216 placement-prep topics and 2,136 questions pass the structural check, and every numeric answer was worked through when it was written.
 "# Stepwise" 

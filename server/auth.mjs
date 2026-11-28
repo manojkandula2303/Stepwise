@@ -19,16 +19,17 @@ export function verifyPassword(pw, stored) {
   return timingSafeEqual(expected, actual);
 }
 
-export function createSession(userId) {
+/** A login on any device creates its own session; all sessions of a user see the same account data. */
+export async function createSession(userId) {
   const token = randomBytes(32).toString('base64url');
   const expires = Date.now() + SESSION_DAYS * 864e5;
-  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expires);
-  db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());
+  await db.run('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)', [token, userId, expires]);
+  await db.run('DELETE FROM sessions WHERE expires_at < ?', [Date.now()]);
   return { token, expires };
 }
 
-export function destroySession(token) {
-  if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+export async function destroySession(token) {
+  if (token) await db.run('DELETE FROM sessions WHERE token = ?', [token]);
 }
 
 function parseCookies(header = '') {
@@ -46,18 +47,21 @@ export function sessionCookie(token, expires, secure) {
   return parts.join('; ');
 }
 
-export function attachUser(req, _res, next) {
-  const token = parseCookies(req.headers.cookie)[COOKIE];
-  req.sessionToken = token;
-  if (token) {
-    const row = db
-      .prepare(
-        'SELECT u.id, u.email, u.name, u.prefs FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?'
-      )
-      .get(token, Date.now());
-    if (row) req.user = { id: row.id, email: row.email, name: row.name, prefs: JSON.parse(row.prefs || '{}') };
+export async function attachUser(req, _res, next) {
+  try {
+    const token = parseCookies(req.headers.cookie)[COOKIE];
+    req.sessionToken = token;
+    if (token) {
+      const row = await db.one(
+        'SELECT u.id, u.email, u.name, u.prefs FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?',
+        [token, Date.now()]
+      );
+      if (row) req.user = { id: Number(row.id), email: row.email, name: row.name, prefs: JSON.parse(row.prefs || '{}') };
+    }
+    next();
+  } catch (e) {
+    next(e);
   }
-  next();
 }
 
 export function requireUser(req, res, next) {

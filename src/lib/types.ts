@@ -85,6 +85,39 @@ export interface UserData {
   snippets: Snippet[];
   activity: Record<string, number>;
   attempts: TestAttempt[];
+  /** Per-user documents: editor buffers, code drafts, self-assessments … (namespace → key → value). */
+  kv: Record<string, Record<string, unknown>>;
+  codingTests: CodingTest[];
+}
+
+// ---------- Infosys-style coding tests ----------
+export type CodingLevel = 'easy' | 'medium' | 'hard' | 'complex';
+
+export interface CaseResult {
+  status: 'pass' | 'fail' | 'error' | 'timeout' | 'compile_error';
+  timeMs?: number;
+}
+
+export interface CodingTestProblem {
+  problemId: string;
+  /** Test cases are regenerated deterministically from (problemId, seed), so only the seed is stored. */
+  seed: number;
+  lang: CodeLang;
+  code: Partial<Record<CodeLang, string>>;
+  /** Result of the last full submission (2 public + 12 private cases). */
+  result?: { cases: CaseResult[]; passed: number; total: number; lang: CodeLang; submittedAt: number };
+}
+
+export interface CodingTest {
+  id: string;
+  level: CodingLevel;
+  title: string;
+  createdAt: number;
+  durationSec: number;
+  startedAt: number | null;
+  finishedAt: number | null;
+  status: 'ready' | 'in-progress' | 'submitted';
+  problems: CodingTestProblem[];
 }
 
 // ---------- execution ----------

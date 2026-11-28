@@ -10,7 +10,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runProcess, createQueue } from './process.mjs';
-import { detectJava, runJava, traceJava, mainClassName } from './javaSandbox.mjs';
+import { detectJava, runJava, runJavaBatch, traceJava, mainClassName } from './javaSandbox.mjs';
 
 const LANGS = ['python', 'java', 'cpp', 'c'];
 const enqueue = createQueue(Number(process.env.RUNNER_CONCURRENCY || 3));
@@ -57,6 +57,26 @@ export async function run({ language, code, stdin = '', timeoutMs = 6000 }) {
     if (cap.driver === 'docker') return runDocker({ language, code, stdin, timeoutMs });
     if (cap.driver === 'judge0') return runJudge0({ language, code, stdin, timeoutMs });
     return runJava({ code, stdin, timeoutMs });
+  });
+}
+
+export async function runBatch({ language, code, stdins, timeoutMs = 4000 }) {
+  if (!LANGS.includes(language)) return stdins.map(() => ({ status: 'internal_error', stderr: 'Unsupported language.' }));
+  const caps = await capabilities();
+  const cap = caps[language];
+  if (!cap.available) return stdins.map(() => ({ status: 'unavailable', stderr: cap.reason }));
+  return enqueue(async () => {
+    if (cap.driver === 'java-sandbox') return runJavaBatch({ code, stdins, timeoutMs });
+    const out = [];
+    for (const stdin of stdins) {
+      const r = cap.driver === 'docker' ? await runDocker({ language, code, stdin, timeoutMs }) : await runJudge0({ language, code, stdin, timeoutMs });
+      out.push(r);
+      if (r.status === 'compile_error') {
+        while (out.length < stdins.length) out.push(r);
+        break;
+      }
+    }
+    return out;
   });
 }
 

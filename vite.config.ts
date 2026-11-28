@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { contentIndex } from './scripts/content-index';
+import { contentIndex } from './scripts/content-index.ts';
+import { pwa } from './scripts/pwa.ts';
 
 export default defineConfig({
-  plugins: [react(), contentIndex(__dirname)],
+  plugins: [react(), contentIndex(import.meta.dirname), pwa(import.meta.dirname)],
   server: { port: 5173, proxy: { '/api': 'http://localhost:8787' } },
   worker: { format: 'es' },
   build: {

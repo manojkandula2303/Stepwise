@@ -3,6 +3,7 @@
  * statement is rated 1–5 and averaged into trait scores with plain-language interpretation.
  * Items are original wording modelled on the widely used Big Five framework.
  */
+import { actions, getDoc } from '../../lib/store';
 import { useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { Button, ProgressBar } from '../../components/ui';
@@ -92,12 +93,8 @@ export function AssessmentBlock({ kind }: { kind: string }) {
   const inv = INVENTORIES[kind];
   const key = `sw-assess-${kind}`;
   const [answers, setAnswers] = useState<(number | null)[]>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(key) || 'null');
-      if (Array.isArray(saved) && saved.length === inv?.items.length) return saved;
-    } catch {
-      /* ignore */
-    }
+    const saved = getDoc<(number | null)[]>('assessment', kind, key);
+    if (Array.isArray(saved) && saved.length === inv?.items.length) return saved;
     return inv ? inv.items.map(() => null) : [];
   });
   const [showResult, setShowResult] = useState(() => answers.every((a) => a !== null));
@@ -106,11 +103,7 @@ export function AssessmentBlock({ kind }: { kind: string }) {
   const set = (i: number, v: number) => {
     const next = answers.map((a, j) => (j === i ? v : a));
     setAnswers(next);
-    try {
-      localStorage.setItem(key, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
+    actions.setDoc('assessment', kind, next);
   };
   const done = answers.filter((a) => a !== null).length;
 
@@ -176,11 +169,7 @@ export function AssessmentBlock({ kind }: { kind: string }) {
             onClick={() => {
               setAnswers(inv.items.map(() => null));
               setShowResult(false);
-              try {
-                localStorage.removeItem(key);
-              } catch {
-                /* ignore */
-              }
+              actions.removeDoc('assessment', kind);
             }}
           >
             Retake

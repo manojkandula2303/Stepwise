@@ -1,17 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { BookOpen, Code2, GraduationCap, LayoutGrid, ListChecks, LogIn, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Sun, Target, User as UserIcon } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, Building2, CloudOff, Code2, GraduationCap, HardDrive, LayoutGrid, ListChecks, LogIn, LogOut, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Sun, Target, User as UserIcon } from 'lucide-react';
 import { actions, useStore } from '../../lib/store';
 import { Button, IconButton, Menu, Tooltip } from '../ui';
 import { AuthModal } from '../../features/auth/AuthModal';
 
 const NAV = [
-  { to: '/', label: 'Dashboard', icon: LayoutGrid, end: true },
+  { to: '/', label: 'Dashboard', short: 'Home', icon: LayoutGrid, end: true },
   { to: '/learn', label: 'Learn', icon: BookOpen },
   { to: '/practice', label: 'Practice', icon: Target },
   { to: '/lc150', label: 'LeetCode 150', short: 'LC 150', icon: ListChecks },
   { to: '/prep', label: 'Placement Prep', short: 'Prep', icon: GraduationCap },
-  { to: '/compiler', label: 'Compiler', icon: Code2 },
+  { to: '/infosys', label: 'Infosys Coding', short: 'Infosys', icon: Building2 },
+  { to: '/compiler', label: 'Compiler', short: 'Code', icon: Code2 },
 ];
 
 export function BrandMark() {
@@ -41,8 +42,36 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+/** Offline / sync status, shown under the top bar. */
+function SyncBanner() {
+  const offline = useStore((s) => s.offline);
+  const pending = useStore((s) => s.pending);
+  const expired = useStore((s) => s.sessionExpired);
+  const user = useStore((s) => s.user);
+  if (expired)
+    return (
+      <div className="sync-banner warn" role="status">
+        <RefreshCw size={14} />
+        <span className="grow">Your session expired. {pending ? `${pending} change(s) are saved on this device — ` : ''}sign in again to sync them.</span>
+        <button className="link-btn" onClick={() => openAuth.current('login')}>Sign in</button>
+      </div>
+    );
+  if (!offline) return null;
+  return (
+    <div className="sync-banner" role="status">
+      <CloudOff size={14} />
+      <span className="grow">
+        You're offline. {user ? 'Your changes are saved to your account on this device' : 'Your progress is saved on this device'}
+        {user && pending ? ` (${pending} waiting to sync)` : ''}. Lessons, practice, prep and Python keep working; Java, C and C++ need the server.
+      </span>
+    </div>
+  );
+}
+
 function AccountControl({ compact }: { compact?: boolean }) {
   const user = useStore((s) => s.user);
+  const pending = useStore((s) => s.pending);
+  const navigate = useNavigate();
   if (!user)
     return compact ? (
       <Button size="sm" variant="secondary" icon={<LogIn />} onClick={() => openAuth.current('login')}>
@@ -81,7 +110,11 @@ function AccountControl({ compact }: { compact?: boolean }) {
           </button>
         )
       }
-      items={[{ label: user.email, heading: true }, { label: 'Sign out', icon: <LogOut />, onSelect: actions.signOut }]}
+      items={[
+        { label: user.email, heading: true },
+        { label: pending ? `Account & storage (${pending} to sync)` : 'Account & storage', icon: <HardDrive />, onSelect: () => navigate('/account') },
+        { label: 'Sign out', icon: <LogOut />, onSelect: actions.signOut },
+      ]}
     />
   );
 }
@@ -97,7 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<null | 'login' | 'signup'>(null);
   const loc = useLocation();
   openAuth.current = (m = 'login') => setAuth(m);
-  const focus = /^\/((practice|lc150)\/[^/]+|prep\/test\/)/.test(loc.pathname);
+  const focus = /^\/((practice|lc150)\/[^/]+|prep\/test\/|infosys\/(test|problem)\/)/.test(loc.pathname);
 
   useEffect(() => {
     try {
@@ -151,6 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AccountControl compact />
           </div>
         </header>
+        <SyncBanner />
         <div className="main-scroll" id="main-scroll">
           {children}
         </div>

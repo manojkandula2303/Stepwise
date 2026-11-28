@@ -106,21 +106,41 @@ export async function runCode(language: CodeLang, code: string, stdin = '', time
   const started = performance.now();
   if (language === 'python') {
     try {
+      // Don't count the one-time runtime download as execution time.
+      let t0 = started;
+      if (pyStatus !== 'ready') {
+        const onReady = () => {
+          if (pyStatus === 'ready') {
+            t0 = performance.now();
+            statusSubs.delete(onReady);
+          }
+        };
+        statusSubs.add(onReady);
+      }
       const r = await callWorker('run', code, stdin, timeoutMs);
-      return { ...r, timeMs: Math.round(performance.now() - started) };
+      return { ...r, timeMs: Math.round(performance.now() - t0) };
     } catch (e) {
       if (e instanceof TimeoutError)
         return { status: 'timeout', stdout: '', stderr: `Time limit exceeded (${timeoutMs / 1000}s). Look for an infinite loop or a slow algorithm.` };
-      return { status: 'internal_error', stdout: '', stderr: `Could not start Python: ${(e as Error).message}. Check your internet connection (the runtime loads from a CDN).` };
+      return { status: 'internal_error', stdout: '', stderr: navigator.onLine ? `Could not start Python: ${(e as Error).message}.` : 'The Python runtime has not been downloaded on this device yet. Connect to the internet once (or use "Prepare for offline" on the Account page) and Python will then run offline.' };
     }
   }
   try {
     const r = await api<RunResult>('/run', { body: { language, code, stdin, timeoutMs } });
     return { ...r, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
   } catch (e) {
-    return { status: 'internal_error', stdout: '', stderr: (e as Error).message };
+    const offline = !navigator.onLine || (e as { status?: number }).status === 0;
+    return {
+      status: 'unavailable',
+      stdout: '',
+      stderr: offline
+        ? `${LANG_NAME[language]} code runs on the Stepwise server, which can't be reached right now. Python runs fully offline in your browser; switch to Python or try again when you're back online.`
+        : (e as Error).message,
+    };
   }
 }
+
+const LANG_NAME: Record<CodeLang, string> = { python: 'Python', java: 'Java', cpp: 'C++', c: 'C' };
 
 export async function traceCode(language: 'python' | 'java', code: string, stdin = ''): Promise<{ trace?: Trace; error?: string }> {
   if (language === 'python') {

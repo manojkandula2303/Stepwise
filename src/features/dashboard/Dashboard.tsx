@@ -5,7 +5,7 @@ import { PREP_TOPICS, SPACES, locateTopic, spaceTopics } from '../../content/pre
 import { pct } from '../prep/tests';
 import { CONCEPTS, SUBJECTS, subjectConcepts, subjectsForConcept } from '../../content/curriculum';
 import { LC150, PROBLEMS, PROBLEMS_BY_ID } from '../../content/problems';
-import { streakOf, useStore, actions } from '../../lib/store';
+import { getDoc, streakOf, useStore, actions } from '../../lib/store';
 import { ProgressBar, Segmented } from '../../components/ui';
 import { LANG_LABEL, type LearnLang } from '../../lib/types';
 import { openAuth } from '../../components/layout/AppShell';
@@ -42,12 +42,7 @@ export function Dashboard() {
   const accuracy = s.submissions.length ? Math.round((accepted / s.submissions.length) * 100) : null;
   const conceptsDone = Object.keys(s.completed).filter((c) => CONCEPTS[c]).length;
 
-  let last: { subject: string; concept: string } | null = null;
-  try {
-    last = JSON.parse(localStorage.getItem('sw-last-concept') || 'null');
-  } catch {
-    /* ignore */
-  }
+  const last = getDoc<{ subject: string; concept: string }>('misc', 'last-concept', 'sw-last-concept') || null;
   const lastConcept = last && CONCEPTS[last.concept];
   const resume = (() => {
     if (lastConcept && last) {

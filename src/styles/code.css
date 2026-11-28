@@ -167,3 +167,35 @@
   content: 'No output';
   color: var(--text-4);
 }
+
+/* ================= Complexity panel ================= */
+.cx {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+}
+.cx-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; padding: 8px 12px; }
+.cx-metric { display: inline-flex; align-items: baseline; gap: 6px; }
+.cx-metric > svg { align-self: center; color: var(--text-3); }
+.cx-label { font-size: var(--text-xs); color: var(--text-3); font-weight: 500; }
+.cx-value { font-family: var(--font-mono); font-size: var(--text-md); font-weight: 600; }
+.cx-name { font-size: var(--text-xs); color: var(--text-3); }
+.cx-conf { margin-left: auto; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); }
+.cx-high { background: var(--success-soft); color: var(--success); }
+.cx-medium { background: var(--accent-soft); color: var(--accent-text); }
+.cx-low { background: var(--warning-soft); color: var(--warning); }
+.cx-toggle { display: inline-flex; align-items: center; gap: 2px; font-size: var(--text-xs); color: var(--text-2); background: none; border: 0; cursor: pointer; padding: 2px 4px; border-radius: var(--radius-sm); }
+.cx-toggle:hover { background: var(--surface-hover); }
+.cx-toggle svg { transition: transform var(--dur) var(--ease); }
+.cx-body { border-top: 1px solid var(--border); padding: 10px 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 20px; }
+.cx-body ul { margin: 4px 0 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: var(--text-xs); color: var(--text-2); }
+.cx-sub { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
+.cx-note { grid-column: 1 / -1; margin: 0; font-size: var(--text-xs); color: var(--text-3); display: flex; gap: 6px; align-items: flex-start; }
+.cx-note svg { flex-shrink: 0; margin-top: 2px; }
+.cx-compact .cx-head { padding: 6px 10px; }
+@media (max-width: 767px) {
+  .cx-body { grid-template-columns: 1fr; }
+  .cx-conf { margin-left: 0; }
+}

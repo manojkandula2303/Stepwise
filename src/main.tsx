@@ -10,9 +10,11 @@ import './styles/learn.css';
 import './styles/practice.css';
 import './styles/tools.css';
 import './styles/prep.css';
+import './styles/infosys.css';
 import { AppShell } from './components/layout/AppShell';
 import { Toaster } from './components/ui';
 import { actions } from './lib/store';
+import { registerServiceWorker } from './lib/offline';
 import { Dashboard } from './features/dashboard/Dashboard';
 import { LearnHome } from './features/learn/LearnHome';
 import { ConceptPage } from './features/learn/ConceptPage';
@@ -26,6 +28,12 @@ const SpacePage = lazy(() => prep().then((m) => ({ default: m.SpacePage })));
 const TopicPage = lazy(() => prep().then((m) => ({ default: m.TopicPage })));
 const TestRunner = lazy(() => prep().then((m) => ({ default: m.TestRunner })));
 const TestResult = lazy(() => prep().then((m) => ({ default: m.TestResult })));
+const infosys = () => import('./features/infosys/routes');
+const InfosysHome = lazy(() => infosys().then((m) => ({ default: m.InfosysHome })));
+const InfosysLevel = lazy(() => infosys().then((m) => ({ default: m.LevelPage })));
+const InfosysProblem = lazy(() => infosys().then((m) => ({ default: m.ProblemPage })));
+const InfosysTest = lazy(() => infosys().then((m) => ({ default: m.TestPage })));
+const AccountPage = lazy(() => import('./features/account/AccountPage').then((m) => ({ default: m.AccountPage })));
 const CompilerPage = lazy(() => import('./features/compiler/CompilerPage').then((m) => ({ default: m.CompilerPage })));
 const VisualizePage = lazy(() => import('./features/compiler/CompilerPage').then((m) => ({ default: m.VisualizePage })));
 
@@ -33,7 +41,7 @@ function TitleSync() {
   const { pathname } = useLocation();
   useEffect(() => {
     const seg = pathname.split('/')[1];
-    const map: Record<string, string> = { '': 'Dashboard', learn: 'Learn', practice: 'Practice', lc150: 'LeetCode 150', prep: 'Placement Prep', compiler: 'Compiler', visualize: 'Visualizer' };
+    const map: Record<string, string> = { '': 'Dashboard', learn: 'Learn', practice: 'Practice', lc150: 'LeetCode 150', prep: 'Placement Prep', infosys: 'Infosys Coding', account: 'Account', compiler: 'Compiler', visualize: 'Visualizer' };
     document.title = `${map[seg] ?? 'Stepwise'} · Stepwise`;
   }, [pathname]);
   return null;
@@ -98,6 +106,11 @@ function App() {
             <Route path="/prep/result/:attemptId" element={<TestResult />} />
             <Route path="/prep/:space" element={<SpacePage />} />
             <Route path="/prep/:space/:topic" element={<TopicPage />} />
+            <Route path="/infosys" element={<InfosysHome />} />
+            <Route path="/infosys/problem/:id" element={<InfosysProblem />} />
+            <Route path="/infosys/test/:id" element={<InfosysTest />} />
+            <Route path="/infosys/:level" element={<InfosysLevel />} />
+            <Route path="/account" element={<AccountPage />} />
             <Route path="/compiler" element={<CompilerPage />} />
             <Route path="/visualize" element={<VisualizePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -109,6 +122,8 @@ function App() {
     </BrowserRouter>
   );
 }
+
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

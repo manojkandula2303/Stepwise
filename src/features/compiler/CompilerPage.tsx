@@ -10,16 +10,13 @@ import { LANG_LABEL, type CodeLang, type RunResult, type Trace, type Snippet } f
 import { SAMPLES } from './samples';
 import { Visualizer } from '../visualizer/Visualizer';
 import { toast } from '../../lib/toast';
+import { getDoc } from '../../lib/store';
+import { ComplexityPanel } from '../../components/code/ComplexityPanel';
 
 const LANGS: CodeLang[] = ['python', 'java', 'cpp', 'c'];
 const bufKey = (l: CodeLang) => `sw-compiler:${l}`;
-const loadBuf = (l: CodeLang) => {
-  try {
-    return localStorage.getItem(bufKey(l)) ?? SAMPLES[0].code[l];
-  } catch {
-    return SAMPLES[0].code[l];
-  }
-};
+/** Editor buffers live in the signed-in user's own (synced) space; guests keep them on this device. */
+const loadBuf = (l: CodeLang) => getDoc<string>('buffer', l, bufKey(l)) ?? SAMPLES[0].code[l];
 
 type CaseRun = { input: string; result?: RunResult; running?: boolean };
 
@@ -61,11 +58,7 @@ export function CompilerPage({ visualize: startVisualize = false }: { visualize?
 
   useEffect(() => {
     const t = setTimeout(() => {
-      try {
-        localStorage.setItem(bufKey(lang), code);
-      } catch {
-        /* ignore */
-      }
+      if (getDoc<string>('buffer', lang) !== code) actions.setDoc('buffer', lang, code);
     }, 300);
     return () => clearTimeout(t);
   }, [code, lang]);
@@ -196,6 +189,7 @@ export function CompilerPage({ visualize: startVisualize = false }: { visualize?
             Run the program to see its output.
           </div>
         )}
+        <ComplexityPanel code={code} lang={lang} measuredMs={res?.timeMs} />
       </div>
     </div>
   );

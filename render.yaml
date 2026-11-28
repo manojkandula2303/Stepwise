@@ -1,0 +1,23 @@
+# Render Blueprint: creates the Stepwise web service and its PostgreSQL database together.
+# In Render: New → Blueprint → connect this repository → Apply.
+services:
+  - type: web
+    name: stepwise
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stepwise-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: USER_QUOTA_MB
+        value: "25"
+
+databases:
+  - name: stepwise-db
+    plan: free
+    databaseName: stepwise
+    user: stepwise

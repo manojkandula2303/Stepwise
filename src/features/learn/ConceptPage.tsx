@@ -96,11 +96,7 @@ export function ConceptPage() {
   useEffect(() => {
     document.getElementById('main-scroll')?.scrollTo({ top: 0 });
     setDrawer(false);
-    try {
-      localStorage.setItem('sw-last-concept', JSON.stringify({ subject: sid, concept: cid }));
-    } catch {
-      /* ignore */
-    }
+    actions.setDoc('misc', 'last-concept', { subject: sid, concept: cid });
   }, [sid, cid]);
 
   // Scroll-spy for "On this page".

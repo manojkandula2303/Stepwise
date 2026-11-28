@@ -16,7 +16,7 @@ import { runProcess } from './process.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
-const workDir = join(root, '.sandbox');
+const workDir = process.env.SANDBOX_DIR || join(root, '.sandbox');
 const policyPath = join(workDir, 'sandbox.policy');
 const tracerOut = join(workDir, 'tracer');
 
@@ -91,6 +91,26 @@ export async function runJava({ code, stdin, timeoutMs }) {
     else if (r.code !== 0) status = 'runtime_error';
     if (/OutOfMemoryError/.test(stderr)) status = 'memory_limit';
     return { status, stdout: r.stdout, stderr, exitCode: r.code, timeMs: r.ms, truncated: r.truncated };
+  } finally {
+    rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/** Compile once, then run the program against each input in its own sandboxed JVM. */
+export async function runJavaBatch({ code, stdins, timeoutMs }) {
+  const dir = await mkdtemp(join(tmpdir(), 'sw-java-'));
+  try {
+    const c = await compile(code, dir, false);
+    if (!c.ok) return stdins.map(() => ({ status: 'compile_error', compileOutput: c.msg, stdout: '', stderr: '', timeMs: 0 }));
+    const out = [];
+    for (const stdin of stdins) {
+      const r = await runProcess('java', [...sandboxFlags(), '-cp', c.out, c.cls], { stdin, timeoutMs, cwd: dir });
+      const stderr = cleanStderr(r.stderr);
+      let status = r.timedOut ? 'timeout' : r.code !== 0 ? 'runtime_error' : 'ok';
+      if (/OutOfMemoryError/.test(stderr)) status = 'memory_limit';
+      out.push({ status, stdout: r.stdout, stderr, exitCode: r.code, timeMs: r.ms, truncated: r.truncated });
+    }
+    return out;
   } finally {
     rm(dir, { recursive: true, force: true }).catch(() => {});
   }
